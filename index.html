@@ -323,7 +323,7 @@ body { background: radial-gradient(70% 34% at 100% 0%, var(--glow2), transparent
         <span class="eyebrow" id="q-eyebrow">Quête n°1</span>
         <div class="head">
           <div class="big" id="val">0</div>
-          <div class="of">verres scellés<br>sur <b id="tgt">10</b></div>
+          <div class="of">verres<br>sur <b id="tgt">10</b></div>
         </div>
         <div class="chips" id="q-chips"></div>
         <hr class="rule">
@@ -348,9 +348,9 @@ body { background: radial-gradient(70% 34% at 100% 0%, var(--glow2), transparent
     <!-- CONSEIL -->
     <section class="view" id="v-conseil" aria-label="Conseil" hidden>
       <div class="card">
-        <span class="eyebrow">Le Conseil des validateurs</span>
-        <h2 id="c-title">Verres à sceller</h2>
-        <p class="note">Plusieurs validateurs peuvent répondre. Le premier qui tranche décide, les autres voient son nom.</p>
+        <span class="eyebrow">Le Conseil veille</span>
+        <h2 id="c-title">Verres</h2>
+        <p class="note">Les verres de Deborah comptent dès qu'elle les ajoute. Le Conseil les suit ici et reçoit une notification à chaque nouveau verre.</p>
         <div id="council-list"></div>
       </div>
       <div class="card" id="settings">
@@ -445,7 +445,7 @@ body { background: radial-gradient(70% 34% at 100% 0%, var(--glow2), transparent
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
     <div class="grab"></div>
     <h2 id="sheet-title">Quel verre lèves-tu ?</h2>
-    <p class="note">Choisis ta boisson. Le Conseil devra la sceller pour qu'elle compte.</p>
+    <p class="note">Choisis ta boisson. Elle compte tout de suite et le Conseil est prévenu.</p>
     <div class="drinks" id="drinks"></div>
     <button class="btn" type="button" data-act="close-sheet">Fermer</button>
   </div>
@@ -757,20 +757,20 @@ body { background: radial-gradient(70% 34% at 100% 0%, var(--glow2), transparent
     // appel à l'action
     var cta = $('cta');
     if (state.isValidator) {
-      var pa = state.glasses.filter(function (x) { return x.status === 'pending'; }).length;
-      cta.innerHTML = '<div class="card"><span class="eyebrow">Conseil</span><p>' + (pa ? plural(pa, 'verre attend', 'verres attendent') + ' ton sceau.' : 'Aucun verre n\'attend le Conseil.') + '</p>' + (d.launched ? '' : '<p class="note">' + esc(waitText()) + '</p>') + '<button class="btn gold" type="button" data-act="tab" data-tab="conseil">Ouvrir le Conseil</button></div>';
+      var last = state.glasses.slice().sort(function (a, b) { return b.at - a.at; })[0];
+      cta.innerHTML = '<div class="card"><span class="eyebrow">Conseil</span><p>' + (last ? 'Dernier verre : ' + esc(drink(last.drink).name) + ', le ' + fmt(last.at) + '.' : "Aucun verre pour l'instant.") + '</p>' + (d.launched ? '' : '<p class="note">' + esc(waitText()) + '</p>') + '<button class="btn gold" type="button" data-act="tab" data-tab="conseil">Voir le Conseil</button></div>';
       $('pending').innerHTML = '';
     } else {
       if (state.watcher) cta.innerHTML = '<div class="card"><span class="eyebrow">Observateur</span><p>Tu suis la quête de Deborah en lecture seule. Touche ton nom en haut pour te connecter avec ton code.</p></div>';
       else if (!d.launched) cta.innerHTML = waitCard();
       else cta.innerHTML = '<button class="btn gold cta" type="button" data-act="open-sheet"' + (d.done ? ' disabled' : '') + '>' + (d.done ? 'Quête accomplie' : 'Lever un verre') + '</button>' +
-        (!d.done && d.p >= MAX_PENDING ? '<p class="note" style="margin-top:10px;text-align:center">Le Conseil doit d\'abord sceller tes verres en attente.</p>' : '');
-      var mine = d.list.filter(function (x) { return x.status === 'pending'; }).sort(function (a, b) { return a.at - b.at; });
-      $('pending').innerHTML = (mine.length && !state.watcher) ?'<div class="card"><span class="eyebrow">En attente du Conseil</span><ul class="list">' + mine.map(function (x) {
+        '';
+      var mine = d.list.filter(function (x) { return x.status === 'validated' && state.me && x.by === state.me && Date.now() - x.at < 10 * 60000; }).sort(function (a, b) { return b.at - a.at; });
+      $('pending').innerHTML = (mine.length && !state.watcher) ?'<div class="card"><span class="eyebrow">Annuler un verre ajouté par erreur</span><ul class="list">' + mine.map(function (x) {
         var dr = drink(x.drink);
-        var undo = x.by === state.me ? '<div class="acts"><button class="btn small" type="button" data-act="remove" data-id="' + esc(x.id) + '">Retirer</button></div>' : '';
-        return '<li class="entry"><span class="e-gl" style="--c:var(' + dr.c + ')">' + g(dr.gl) + '</span><div class="e-main"><b>' + esc(dr.name) + '</b><span>' + esc(dr.sub) + ' · ' + fmt(x.at) + '</span></div><span class="pill pending">En attente</span>' + undo + '</li>';
-      }).join('') + '</ul><p class="note">Les validateurs reçoivent une notification sur leur téléphone.</p><button class="btn small" type="button" data-act="copy-call">Copier un rappel pour le Conseil</button></div>' : '';
+        var undo = x.by === state.me ? '<div class="acts"><button class="btn small" type="button" data-act="remove" data-id="' + esc(x.id) + '">Annuler</button></div>' : '';
+        return '<li class="entry"><span class="e-gl" style="--c:var(' + dr.c + ')">' + g(dr.gl) + '</span><div class="e-main"><b>' + esc(dr.name) + '</b><span>' + esc(dr.sub) + ' · ' + fmt(x.at) + '</span></div><span class="pill validated">Compté</span>' + undo + '</li>';
+      }).join('') + '</ul><p class="note">L\'annulation reste possible pendant 10 minutes. Le Conseil est prévenu à chaque verre.</p></div>' : '';
     }
   }
 
@@ -787,19 +787,12 @@ body { background: radial-gradient(70% 34% at 100% 0%, var(--glow2), transparent
   }
 
   function renderConseil(d) {
-    var pend = state.glasses.filter(function (x) { return x.status === 'pending'; }).sort(function (a, b) { return a.at - b.at; });
-    $('c-title').textContent = pend.length ? plural(pend.length, 'verre à sceller', 'verres à sceller') : 'Verres à sceller';
-    var html;
-    if (!pend.length) html = '<p class="empty">Rien à trancher pour le moment. Les nouvelles demandes apparaissent ici toutes seules.</p>';
-    else {
-      html = '<ul class="list">' + pend.map(function (x) {
-        var dr = drink(x.drink);
-        return '<li class="entry"><span class="e-gl" style="--c:var(' + dr.c + ')">' + g(dr.gl) + '</span><div class="e-main"><b>' + esc(dr.name) + '</b><span>' + esc(dr.sub) + ' · ' + fmt(x.at) + '</span></div><span class="pill pending">En attente</span>' +
-          '<div class="acts"><button class="btn seal" type="button" data-act="decide" data-st="validated" data-id="' + esc(x.id) + '">Sceller</button><button class="btn deny" type="button" data-act="decide" data-st="refused" data-id="' + esc(x.id) + '">Rejeter</button></div></li>';
-      }).join('') + '</ul>';
-      if (pend.length > 1) html += '<button class="btn gold" type="button" data-act="seal-all">Tout sceller</button>';
-    }
-    $('council-list').innerHTML = html;
+    var rec = state.glasses.slice().sort(function (a, b) { return b.at - a.at; }).slice(0, 12);
+    $('c-title').textContent = plural(d.v, 'verre', 'verres') + ' sur ' + d.T;
+    $('council-list').innerHTML = rec.length ? '<ul class="list">' + rec.map(function (x) {
+      var dr = drink(x.drink);
+      return '<li class="entry"><span class="e-gl" style="--c:var(' + dr.c + ')">' + g(dr.gl) + '</span><div class="e-main"><b>' + esc(dr.name) + '</b><span>' + esc(dr.sub) + ' · ' + fmt(x.at) + '</span></div></li>';
+    }).join('') + '</ul>' : '<p class="empty">Aucun verre pour le moment. Les nouveaux verres apparaissent ici tout seuls.</p>';
     var ti = $('target-input');
     if (document.activeElement !== ti) ti.value = d.T;
     var li = $('launch-input');
@@ -830,10 +823,10 @@ body { background: radial-gradient(70% 34% at 100% 0%, var(--glow2), transparent
 
   function renderJournal(d) {
     var all = state.glasses.slice().sort(function (a, b) { return b.at - a.at; });
-    var labels = { pending: 'En attente', validated: 'Scellé', refused: 'Rejeté' };
+    var labels = { pending: 'En attente', validated: 'Compté', refused: 'Rejeté' };
     $('history').innerHTML = all.length ? all.map(function (x) {
       var dr = drink(x.drink);
-      var by = x.status === 'pending' ? '' : '<em>' + (x.status === 'validated' ? 'Scellé' : 'Rejeté') + ' par ' + esc(nameOf(x.decidedBy)) + '</em>';
+      var by = '';
       return '<li class="entry"><span class="e-gl" style="--c:var(' + dr.c + ')">' + g(dr.gl) + '</span><div class="e-main"><b>' + esc(dr.name) + '</b><span>' + esc(dr.sub) + ' · ' + fmt(x.at) + (x.round !== state.round ? ' · quête n°' + x.round : '') + '</span>' + by + '</div><span class="pill ' + esc(x.status) + '">' + labels[x.status] + '</span></li>';
     }).join('') : '<li class="empty">Aucun verre pour l\'instant. Le premier pas hors de la Comté reste à faire.</li>';
     void d;
@@ -845,7 +838,7 @@ body { background: radial-gradient(70% 34% at 100% 0%, var(--glow2), transparent
     $('who').className = 'chip' + (state.isValidator ? ' council' : '');
     var pa = state.glasses.filter(function (x) { return x.status === 'pending'; }).length;
     var co = $('callout');
-    if (state.isValidator && pa && state.tab !== 'conseil') {
+    if (false) {
       co.hidden = false;
       co.innerHTML = '<span><b>LE CONSEIL EST APPELÉ</b><br>' + plural(pa, 'verre attend', 'verres attendent') + ' ton sceau.</span><span aria-hidden="true">›</span>';
     } else co.hidden = true;
@@ -892,8 +885,8 @@ body { background: radial-gradient(70% 34% at 100% 0%, var(--glow2), transparent
     if (!state.ready) { state.ready = true; state.prev = now; return; }
     var pv = state.prev;
     if (state.isValidator) {
-      for (var id in pendIds) if (!pv.pend[id] && !pv.decided[id]) {
-        toast('Le Conseil est appelé : ' + drink(pendIds[id].drink).name + ' à sceller', 'alert');
+      for (var id in decided) if (!pv.pend[id] && !pv.decided[id]) {
+        toast('Deborah a levé : ' + drink(decided[id].drink).name, 'alert');
       }
     } else {
       for (var id2 in decided) if (!pv.decided[id2] && pv.pend[id2] && decided[id2].by === state.me) {
@@ -1045,15 +1038,9 @@ body { background: radial-gradient(70% 34% at 100% 0%, var(--glow2), transparent
       closeSheet();
       var d = derive();
       if (d.done || !d.launched || d.p >= MAX_PENDING || !drink(id).id) return;
-      busy(null, function () { return rpc('add_request', { p_pin: PIN, p_drink: id }).then(function () { notify('council', 'Le Conseil est appelé', (state.myName || 'Deborah') + ' lève : ' + drink(id).name + '. À sceller dans Thermo Debo.'); return load(); }); }, 'Verre envoyé au Conseil');
+      busy(null, function () { return rpc('add_request', { p_pin: PIN, p_drink: id }).then(function () { return load().then(function () { var dd2 = derive(); notify('council', 'Un verre de plus', (state.myName || 'Deborah') + ' a levé : ' + drink(id).name + ' (' + dd2.v + ' sur ' + dd2.T + ').'); }); }); }, 'Verre ajouté, le Conseil est prévenu');
     } else if (act === 'remove') {
       busy(b, function () { return rpc('remove_request', { p_pin: PIN, p_id: id }).then(load); }, 'Verre retiré');
-    } else if (act === 'decide') {
-      var st = b.getAttribute('data-st');
-      busy(b, function () { return decide(id, st); }, st === 'validated' ? 'Verre scellé' : 'Verre rejeté');
-    } else if (act === 'seal-all') {
-      var ids = state.glasses.filter(function (x) { return x.status === 'pending'; }).map(function (x) { return x.id; });
-      busy(b, function () { return ids.reduce(function (p, i) { return p.then(function () { return decide(i, 'validated'); }); }, Promise.resolve()); }, 'Tous les verres sont scellés');
     } else if (act === 'copy-call') {
       var n = derive().p;
       var txt = 'Deborah attend le sceau du Conseil dans Thermo Debo : ' + plural(n, 'verre à valider', 'verres à valider') + '.';
